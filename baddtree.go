@@ -393,9 +393,6 @@ func(newTree *Tree) redistributeNodes(delNode *node, neighborNode *node, neighbo
             neighborNode.pointers[i] = neighborNode.pointers[i + 1]
         }
         if delNode.isLeaf == false {
-            if i == newTree.len - 1{
-                fmt.Println("woca ..... i:",i)
-            }
             neighborNode.pointers[i] = neighborNode.pointers[i+1]
         }
     } else {
