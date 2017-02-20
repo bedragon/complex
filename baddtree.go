@@ -50,13 +50,17 @@ func(newTree *Tree) makeLeaf() *node{
     return tmp
 }
 
-func(newTree *Tree) createNewTree(key int64, value unsafe.Pointer){
+func(newTree *Tree) createNewTree(key int64, value unsafe.Pointer) bool{
     newnode := newTree.makeLeaf()
+    if newnode == nil {
+        return false
+    }
     newnode.keys[0] = key
     newnode.pointers[0] = value
     newnode.pointers[newTree.len - 1] = nil
     newnode.numKeys = 1
     newTree.root = newnode
+    return true
 }
 
 func cut(len int8) int8{
@@ -66,8 +70,11 @@ func cut(len int8) int8{
     return len/2 + 1
 }
 
-func(newTree *Tree) insertIntoNewRoot(key int64, leftLeaf *node, rightLeaf *node){
+func(newTree *Tree) insertIntoNewRoot(key int64, leftLeaf *node, rightLeaf *node) bool{
     parent := newTree.makeNode()
+    if parent == nil {
+        return false
+    }
     parent.keys[0] = key
     parent.pointers[0] = unsafe.Pointer(leftLeaf)
     parent.pointers[1] = unsafe.Pointer(rightLeaf)
@@ -76,6 +83,7 @@ func(newTree *Tree) insertIntoNewRoot(key int64, leftLeaf *node, rightLeaf *node
     leftLeaf.parent = parent
     rightLeaf.parent = parent
     newTree.root = parent
+    return true
 }
 
 func getLeftIndex(parent *node, left *node) int8{
@@ -87,7 +95,7 @@ func getLeftIndex(parent *node, left *node) int8{
     return i
 }
 
-func(newTree *Tree) insertIntoParentAfterSplitting(key int64, oldNode *node, right *node, leftIndex int8){
+func(newTree *Tree) insertIntoParentAfterSplitting(key int64, oldNode *node, right *node, leftIndex int8) bool{
     var i,j int8
     tmpPointers := make([]unsafe.Pointer, newTree.len + 1)
     tmpKeys := make([]int64, newTree.len)
@@ -128,14 +136,13 @@ func(newTree *Tree) insertIntoParentAfterSplitting(key int64, oldNode *node, rig
         child := (*node)(unsafe.Pointer(newNode.pointers[i]))
         child.parent = newNode
     }
-    newTree.insertIntoParent(topKey, oldNode, newNode)
+    return newTree.insertIntoParent(topKey, oldNode, newNode)
 }
 
-func(newTree *Tree) insertIntoParent(key int64, leftLeaf *node, rightLeaf *node){
+func(newTree *Tree) insertIntoParent(key int64, leftLeaf *node, rightLeaf *node) bool{
     parent := leftLeaf.parent
     if parent == nil {
-        newTree.insertIntoNewRoot(key, leftLeaf, rightLeaf)
-        return
+        return newTree.insertIntoNewRoot(key, leftLeaf, rightLeaf)
     }
 
     leftIndex := getLeftIndex(parent, leftLeaf)
@@ -147,12 +154,12 @@ func(newTree *Tree) insertIntoParent(key int64, leftLeaf *node, rightLeaf *node)
         parent.pointers[leftIndex + 1] = unsafe.Pointer(rightLeaf)
         parent.keys[leftIndex] = key
         parent.numKeys++
-        return
+        return true
     }
-    newTree.insertIntoParentAfterSplitting(key, parent, rightLeaf, leftIndex) 
+    return newTree.insertIntoParentAfterSplitting(key, parent, rightLeaf, leftIndex) 
 }
 
-func(newTree *Tree) insertIntoLeafAfterSplitting(leaf *node, key int64, value unsafe.Pointer){
+func(newTree *Tree) insertIntoLeafAfterSplitting(leaf *node, key int64, value unsafe.Pointer) bool{
     var i, j, insertPosition int8
     insertPosition = 0
     for(insertPosition < newTree.len - 1 && key > leaf.keys[insertPosition]){
@@ -199,10 +206,10 @@ func(newTree *Tree) insertIntoLeafAfterSplitting(leaf *node, key int64, value un
     leaf.pointers[newTree.len - 1] = unsafe.Pointer(newLeaf)
     newKey := newLeaf.keys[0]
     
-    newTree.insertIntoParent(newKey, leaf, newLeaf)
+    return newTree.insertIntoParent(newKey, leaf, newLeaf)
 }
 
-func(newTree *Tree) insertIntoLeaf(leaf *node, key int64, value unsafe.Pointer) *node{
+func(newTree *Tree) insertIntoLeaf(leaf *node, key int64, value unsafe.Pointer) bool{
     var i, insertPosition int8
     insertPosition = 0
     for(insertPosition < leaf.numKeys && key > leaf.keys[insertPosition]){
@@ -215,7 +222,7 @@ func(newTree *Tree) insertIntoLeaf(leaf *node, key int64, value unsafe.Pointer) 
     leaf.keys[insertPosition] = key
     leaf.pointers[insertPosition] = value
     leaf.numKeys++
-    return leaf
+    return true
 }
 
 func(newTree *Tree) findLeaf(key int64) *node{
@@ -268,19 +275,16 @@ func(newTree *Tree) Find(key int64) string{
 }
 func(newTree *Tree) Inster(key int64, value string) bool{
     if newTree.root == nil {
-        newTree.createNewTree(key, unsafe.Pointer(&value))
-        return true
+        return newTree.createNewTree(key, unsafe.Pointer(&value))
     }
     if newTree.Find(key) != "" {
         return false
     }
     leaf := newTree.findLeaf(key)
     if(leaf.numKeys < newTree.len - 1){
-        newTree.insertIntoLeaf(leaf, key, unsafe.Pointer(&value))
-        return true
+        return newTree.insertIntoLeaf(leaf, key, unsafe.Pointer(&value))
     }
-    newTree.insertIntoLeafAfterSplitting(leaf, key, unsafe.Pointer(&value))
-    return true
+    return newTree.insertIntoLeafAfterSplitting(leaf, key, unsafe.Pointer(&value))
 }
 
 func(newTree *Tree) removeEntryFromNode(key int64, delPointer unsafe.Pointer, delNode *node){
@@ -306,19 +310,19 @@ func(newTree *Tree) removeEntryFromNode(key int64, delPointer unsafe.Pointer, de
     delNode.numKeys--
 }
 
-func(newTree *Tree) adjustRoot(){
+func(newTree *Tree) adjustRoot() bool{
     root := newTree.root
     if root.numKeys > 0 {
-        return
+        return true
     }
     if(root.isLeaf == false) {
         newRoot := (*node)(unsafe.Pointer(root.pointers[0]))
         newTree.root = newRoot
         newRoot.parent = nil
-        return
+        return true
     }
     root = nil
-    return
+    return true
 }
 
 func(newTree *Tree) getNeighborIndex(delNode *node) int8{
@@ -333,7 +337,7 @@ func(newTree *Tree) getNeighborIndex(delNode *node) int8{
     return i-1
 }
 
-func(newTree *Tree) coalesceNodes(primeKey int64, delNode *node, neighborNode *node, neighborIndex int8){
+func(newTree *Tree) coalesceNodes(primeKey int64, delNode *node, neighborNode *node, neighborIndex int8) bool{
     var i,j int8
     
     if neighborIndex == -1 {
@@ -367,10 +371,10 @@ func(newTree *Tree) coalesceNodes(primeKey int64, delNode *node, neighborNode *n
         }
         neighborNode.pointers[newTree.len - 1] = delNode.pointers[newTree.len - 1]
     }
-    newTree.deleteEntry(primeKey, unsafe.Pointer(delNode), delNode.parent)
+    return newTree.deleteEntry(primeKey, unsafe.Pointer(delNode), delNode.parent)
 }
 
-func(newTree *Tree) redistributeNodes(delNode *node, neighborNode *node, neighborIndex int8, primeKeyIndex int8, primeKey int64){
+func(newTree *Tree) redistributeNodes(delNode *node, neighborNode *node, neighborIndex int8, primeKeyIndex int8, primeKey int64) bool{
     var i int8
     if neighborIndex == -1{
         if (delNode.isLeaf == true) {
@@ -384,11 +388,14 @@ func(newTree *Tree) redistributeNodes(delNode *node, neighborNode *node, neighbo
             tmp.parent = delNode
             delNode.parent.keys[primeKeyIndex] = neighborNode.keys[0]
         }
-        for i=0; i<neighborNode.numKeys; i++ {
+        for i=0; i<neighborNode.numKeys - 1; i++ {
             neighborNode.keys[i] = neighborNode.keys[i + 1]
             neighborNode.pointers[i] = neighborNode.pointers[i + 1]
         }
         if delNode.isLeaf == false {
+            if i == newTree.len - 1{
+                fmt.Println("woca ..... i:",i)
+            }
             neighborNode.pointers[i] = neighborNode.pointers[i+1]
         }
     } else {
@@ -415,14 +422,14 @@ func(newTree *Tree) redistributeNodes(delNode *node, neighborNode *node, neighbo
     }
     delNode.numKeys++
     neighborNode.numKeys--
+    return true
 }
 
-func(newTree *Tree) deleteEntry(key int64, value unsafe.Pointer, delNode *node){
+func(newTree *Tree) deleteEntry(key int64, value unsafe.Pointer, delNode *node) bool{
     var minKeys,primeKeyIndex,neighborNodeIndex,capacity int8
     newTree.removeEntryFromNode(key,value, delNode)
     if delNode == newTree.root {
-        newTree.adjustRoot()
-        return
+        return newTree.adjustRoot()
     }
     if delNode.isLeaf {
         minKeys = cut(newTree.len - 1)
@@ -430,7 +437,7 @@ func(newTree *Tree) deleteEntry(key int64, value unsafe.Pointer, delNode *node){
         minKeys = cut(newTree.len) - 1
     }
     if delNode.numKeys >= minKeys {
-        return
+        return true
     }
     neighborIndex := newTree.getNeighborIndex(delNode)
     if neighborIndex == -1 {
@@ -452,18 +459,19 @@ func(newTree *Tree) deleteEntry(key int64, value unsafe.Pointer, delNode *node){
         capacity = newTree.len - 1
     }
     if (neighborNode.numKeys + delNode.numKeys < capacity){
-        newTree.coalesceNodes(primeKey, delNode, neighborNode, neighborIndex)
+        return newTree.coalesceNodes(primeKey, delNode, neighborNode, neighborIndex)
     } else {
-        newTree.redistributeNodes(delNode, neighborNode, neighborIndex, primeKeyIndex, primeKey)
+        return newTree.redistributeNodes(delNode, neighborNode, neighborIndex, primeKeyIndex, primeKey)
     }
 }
 
-func(newTree *Tree) Delete(key int64){
+func(newTree *Tree) Delete(key int64) bool{
     valuePointer := newTree.findPointer(key)
     leaf := newTree.findLeaf(key)
     if (leaf != nil && valuePointer != nil) {
-       newTree.deleteEntry(key, valuePointer, leaf) 
+       return newTree.deleteEntry(key, valuePointer, leaf) 
     }
+    return false
 }
 
 func Test(a int) {
