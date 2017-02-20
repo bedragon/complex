@@ -24,6 +24,9 @@ type Tree struct {
 
 
 func Init(len int8) *Tree{
+    if len < 4 {
+        return nil
+    }
     newTree := new(Tree)
     newTree.root = nil
     newTree.len = len
@@ -55,8 +58,6 @@ func(newTree *Tree) createNewTree(key int64, value unsafe.Pointer){
     newnode.numKeys = 1
     newTree.root = newnode
 }
-
-
 
 func cut(len int8) int8{
     if len % 2 == 0{
@@ -105,14 +106,6 @@ func(newTree *Tree) insertIntoParentAfterSplitting(key int64, oldNode *node, rig
     tmpPointers[leftIndex + 1] = unsafe.Pointer(right)
     tmpKeys[leftIndex] = key
 
-    /*
-    for i = 0; i <= oldNode.numKeys; i++ {
-        fmt.Print(tmpKeys[i]," ")
-    }
-    fmt.Println()
-    */
-    
-
     split := cut(newTree.len)
     oldNode.numKeys = 0
     for i=0; i < split - 1; i++ {
@@ -146,7 +139,6 @@ func(newTree *Tree) insertIntoParent(key int64, leftLeaf *node, rightLeaf *node)
     }
 
     leftIndex := getLeftIndex(parent, leftLeaf)
-    //fmt.Println("parent.numKeys", parent.numKeys)
     if (parent.numKeys < newTree.len - 1) {
         for i:=parent.numKeys; i > leftIndex; i=i-1 {
             parent.pointers[i + 1] = parent.pointers[i]
@@ -157,7 +149,6 @@ func(newTree *Tree) insertIntoParent(key int64, leftLeaf *node, rightLeaf *node)
         parent.numKeys++
         return
     }
-    //fmt.Println("parent key : ", key, " leafIndex : ", leftIndex)
     newTree.insertIntoParentAfterSplitting(key, parent, rightLeaf, leftIndex) 
 }
 
@@ -208,8 +199,6 @@ func(newTree *Tree) insertIntoLeafAfterSplitting(leaf *node, key int64, value un
     leaf.pointers[newTree.len - 1] = unsafe.Pointer(newLeaf)
     newKey := newLeaf.keys[0]
     
-    //fmt.Println("leaf top key : ", newKey)
-
     newTree.insertIntoParent(newKey, leaf, newLeaf)
 }
 
@@ -245,12 +234,7 @@ func(newTree *Tree) findLeaf(key int64) *node{
             }
         }
         myNode = (*node)(unsafe.Pointer(myNode.pointers[i]))
-        
-            if myNode == nil {
-                //newTree.PrintTree()
-            }
     }
-    //fmt.Println("find node  numKeys[0]", myNode.keys[0], " find key : ", key)
     return myNode
 }
 
@@ -283,7 +267,6 @@ func(newTree *Tree) Find(key int64) string{
     return ""
 }
 func(newTree *Tree) Inster(key int64, value string) bool{
-    //defer newTree.PrintTree()
     if newTree.root == nil {
         newTree.createNewTree(key, unsafe.Pointer(&value))
         return true
@@ -384,13 +367,6 @@ func(newTree *Tree) coalesceNodes(primeKey int64, delNode *node, neighborNode *n
         }
         neighborNode.pointers[newTree.len - 1] = delNode.pointers[newTree.len - 1]
     }
-    /*
-    fmt.Println("\n ",unsafe.Pointer(&delNode))
-        for i=0;i<=delNode.parent.numKeys;i++ {
-            fmt.Println(delNode.parent.pointers[i])
-        }
-    fmt.Println("\n ",unsafe.Pointer(delNode))
-    */
     newTree.deleteEntry(primeKey, unsafe.Pointer(delNode), delNode.parent)
 }
 
@@ -430,7 +406,6 @@ func(newTree *Tree) redistributeNodes(delNode *node, neighborNode *node, neighbo
             delNode.parent.keys[primeKeyIndex] = delNode.keys[0]
         } else {
             delNode.pointers[0] = neighborNode.pointers[neighborNode.numKeys]
-            //delNode.keys[0] = neighborNode.parent.keys[primeKeyIndex]
             delNode.keys[0] = primeKey
             neighborNode.pointers[neighborNode.numKeys] = nil
             delNode.parent.keys[primeKeyIndex] = neighborNode.keys[neighborNode.numKeys - 1]
